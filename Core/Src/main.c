@@ -20,7 +20,7 @@
 #include "main.h"
 #include "tim.h"
 #include "gpio.h"
-
+#include "stm32f0xx_hal_tim.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -55,7 +55,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint8_t st=0;
 /* USER CODE END 0 */
 
 /**
@@ -100,6 +100,19 @@ HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
     HAL_Delay(500);
 HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 );
 HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
+if(st != 0)
+{
+  st = 0;
+ 
+HAL_TIM_PWM_Start(&htim14, TIM_CHANNEL_1);
+  
+}
+else
+{
+  st=1;
+
+  HAL_TIM_PWM_Stop(&htim14, TIM_CHANNEL_1);
+}
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
