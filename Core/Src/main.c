@@ -20,7 +20,7 @@
 #include "main.h"
 #include "tim.h"
 #include "gpio.h"
-#include "stm32f0xx_hal_tim.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -44,18 +44,55 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+uint8_t direct_dev = 0; // 0 - ����������� ARR , 1 -  ��������� ARR
+const uint8_t step_freq = 10;
+uint8_t MAX_MIN_ARR[2] = {10, 100};
+static uint8_t curr_freq = 10;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+uint8_t get_Freq(uint8_t freq_type)
+{
+  if(freq_type > 1) freq_type = 0;
+  return MAX_MIN_ARR[freq_type];
+}
 
+uint8_t stepFreq(void)
+{
+  if( direct_dev)
+  {
+    if(curr_freq >= MAX_MIN_ARR[ARR_MIN_INDX] && curr_freq <= MAX_MIN_ARR[ARR_MAX_INDX])
+    {
+      curr_freq -= step_freq;
+    }
+    else
+    {
+      direct_dev = !direct_dev;
+      curr_freq += step_freq;
+    }
+  }
+  else
+  {
+    if(curr_freq >= MAX_MIN_ARR[ARR_MIN_INDX] && curr_freq <= MAX_MIN_ARR[ARR_MAX_INDX] )
+    {
+      curr_freq += step_freq;
+    }
+    else
+    {
+      direct_dev = !direct_dev;
+      curr_freq -= step_freq;
+    }
+  }
+  return curr_freq;
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint8_t st=0;
+uint32_t tick =0;
 /* USER CODE END 0 */
 
 /**
@@ -87,32 +124,25 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_TIM14_Init();
+  MX_TIM3_Init();
+//  MX_TIM14_Init();
   /* USER CODE BEGIN 2 */
 HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+tick = HAL_GetTick() + 1000;
   while (1)
   {
     /* USER CODE END WHILE */
-    HAL_Delay(500);
-HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_0 );
-HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_1);
-if(st != 0)
-{
-  st = 0;
- 
-HAL_TIM_PWM_Start(&htim14, TIM_CHANNEL_1);
-  
-}
-else
-{
-  st=1;
-
-  HAL_TIM_PWM_Stop(&htim14, TIM_CHANNEL_1);
-}
+    if(HAL_GetTick()> tick)
+    {
+      tick += 200;
+      uint8_t arr = stepFreq();
+      TIM3_Set_Arr( arr);
+      
+    }
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
