@@ -36,7 +36,33 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+typedef enum
+{
+  FREQ_SWING,
+  FREQ_INCREASE,
+  FREQ_PULSE,
+}scen_mode_e;
 
+typedef struct
+{
+  uint32_t period_sec;          // длительность сценария
+  uint8_t  dir;                 // увеличивать или уменьшать частоту
+  uint32_t f0;                  // текущая частота
+  uint32_t fmin;                
+  uint32_t fmax;
+  uint32_t step_freq_Hz;        // на сколько меняется частота
+  uint32_t step_ms;             // через какое время менять частоту
+  scen_mode_e  mode;
+}scenario_t;
+
+typedef struct 
+{
+  uint8_t       stage;
+  uint8_t       indx_scen;     
+  uint32_t      time_start;
+  uint32_t      time_stop;
+  
+}scenic_ctrl_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -60,7 +86,8 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
-uint8_t stepFreq(void);
+uint8_t _stepFreq(void);
+void stepFreq(scenario_t *_scen);
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

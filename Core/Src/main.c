@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "adc.h"
 #include "tim.h"
 #include "gpio.h"
 
@@ -29,11 +30,16 @@
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+#define  NO_SOUND       0x00
+#define  FREQ_UP        0x01
+#define  FREQ_DOWN      0x02
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define SCEN_MAX        3
+ 
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -48,6 +54,35 @@ uint8_t direct_dev = 0; // 0 - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ARR , 1 -  ï¿½ï
 const uint8_t step_freq = 10;
 uint8_t MAX_MIN_ARR[2] = {10, 100};
 static uint8_t curr_freq = 10;
+
+scenario_t Scenic[SCEN_MAX]={
+  {.period_sec          = 3*2,
+  .dir                  = 0,
+   .fmin                = 5000,
+   .f0                  = 5000,
+   .fmax                = 50000,
+   .step_freq_Hz        = 5000,
+   .step_ms             = 3*1000}, 
+     
+   {.period_sec         = 60*15,
+   .dir                 = 0,
+   .fmin                = 5000,
+   .f0                  = 5000,
+   .fmax                = 50000,
+   .step_freq_Hz        = 5000,
+   .step_ms             = 60*5*1000},
+     
+   {.period_sec         = 60,
+   .dir                 = 0,
+   .fmin                = 5000,
+   .f0                  = 5000,
+   .fmax                = 50000,
+   .step_freq_Hz        = 5000,
+   .step_ms             = 300},
+
+};
+
+scenic_ctrl_t controller ;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -59,7 +94,60 @@ uint8_t get_Freq(uint8_t freq_type)
   return MAX_MIN_ARR[freq_type];
 }
 
-uint8_t stepFreq(void)
+void changeScenario()
+{
+
+}
+void stepFreq(scenario_t *_scen)
+{
+
+    switch(_scen->mode)
+    {
+      case FREQ_SWING:
+      {
+        if(_scen->f0 >= _scen->fmax)
+        {
+          _scen->f0 -= _scen->step_freq_Hz;
+        }
+        else
+        {
+          _scen->f0 += _scen->step_freq_Hz;
+        }
+      }
+      break;
+      case FREQ_INCREASE:
+      {
+        if(_scen->f0 >= _scen->fmax)
+        {
+          _scen->f0 = _scen->fmin;
+        }
+        else
+        {
+          _scen->f0 += _scen->step_freq_Hz;
+        }
+      }
+      break;
+      case FREQ_PULSE:
+      {
+        if(0 == _scen->dir){
+          _scen->dir = 1;
+          _scen->f0 = 0;
+        }
+        else{
+          _scen->dir = 0;
+          if(_scen->f0 >= _scen->fmax){
+            _scen->f0 = _scen->fmin;
+          }
+          else{
+            _scen->f0 += _scen->step_freq_Hz;
+          }
+        }
+      }
+      break;
+    }
+}
+
+uint8_t _stepFreq(void)
 {
   if( direct_dev)
   {
@@ -93,6 +181,8 @@ uint8_t stepFreq(void)
 /* USER CODE BEGIN 0 */
 uint8_t st=0;
 uint32_t tick =0;
+scenario_t *sc;
+ 
 /* USER CODE END 0 */
 
 /**
@@ -125,24 +215,30 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_TIM3_Init();
-//  MX_TIM14_Init();
+  MX_ADC_Init();
   /* USER CODE BEGIN 2 */
-HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+  sc = &Scenic[controller.indx_scen];
+  stepFreq(sc);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  controller.time_start = HAL_GetTick();
+  controller.time_stop  = 
 tick = HAL_GetTick() + 1000;
   while (1)
   {
-    /* USER CODE END WHILE */
     if(HAL_GetTick()> tick)
     {
       tick += 200;
-      uint8_t arr = stepFreq();
+      uint8_t arr = _stepFreq();
       TIM3_Set_Arr( arr);
       
     }
+    
+    /* USER CODE END WHILE */
+
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -160,9 +256,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSI14;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSI14State = RCC_HSI14_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.HSI14CalibrationValue = 16;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL12;
