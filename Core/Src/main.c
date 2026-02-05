@@ -34,6 +34,19 @@
 #define  FREQ_UP        0x01
 #define  FREQ_DOWN      0x02
 
+#define DEBUG 0
+
+//#if ((DEBUG == 1))
+//#define F_MIN           2000
+//#define F_MAX           6000
+//#define F_STEP          200
+//#else
+#define F_MIN           20000
+#define F_MAX           60000
+#define F_STEP          2000
+//#endif
+#define F_DIV_ULTRA     1
+#define F_DIV_NORMAL    1
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -50,36 +63,44 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-uint8_t direct_dev = 0; // 0 - ����������� ARR , 1 -  ��������� ARR
+
+uint8_t direct_dev = 0; // 0 -  ARR , 1 -  ��������� ARR
 const uint8_t step_freq = 10;
 uint8_t MAX_MIN_ARR[2] = {10, 100};
 static uint8_t curr_freq = 10;
+uint32_t stop_step_ms =0;
+static uint32_t cur_freq = F_MIN;
 
 scenario_t Scenic[SCEN_MAX]={
-  {.period_sec          = 3*2,
+  {.period_sec          = 60,
   .dir                  = 0,
-   .fmin                = 5000,
-   .f0                  = 5000,
-   .fmax                = 50000,
-   .step_freq_Hz        = 5000,
-   .step_ms             = 3*1000}, 
+   .fmin                = F_MIN,
+   .f0                  = F_MIN,
+   .fmax                = F_MAX,
+   .step_freq_Hz        = F_STEP,
+   .step_ms             = 5000,//3*1000
+   .mode                = FREQ_PULSE 
+  }, 
      
-   {.period_sec         = 60*15,
+   {.period_sec         = 60,//60*15,
    .dir                 = 0,
-   .fmin                = 5000,
-   .f0                  = 5000,
-   .fmax                = 50000,
-   .step_freq_Hz        = 5000,
-   .step_ms             = 60*5*1000},
+   .fmin                = F_MIN,
+   .f0                  = F_MIN,
+   .fmax                = F_MAX,
+   .step_freq_Hz        = F_STEP,
+   .step_ms             = 5000,//60*5*1000
+   .mode                = FREQ_INCREASE,
+   },
      
    {.period_sec         = 60,
    .dir                 = 0,
-   .fmin                = 5000,
-   .f0                  = 5000,
-   .fmax                = 50000,
-   .step_freq_Hz        = 5000,
-   .step_ms             = 300},
-
+   .fmin                = F_MIN,
+   .f0                  = F_MIN,
+   .fmax                = F_MAX,
+   .step_freq_Hz        = F_STEP,
+   .step_ms             = 5000,
+   .mode                = FREQ_SWING
+   },
 };
 
 scenic_ctrl_t controller ;
@@ -96,23 +117,41 @@ uint8_t get_Freq(uint8_t freq_type)
 
 void changeScenario()
 {
-
+  if(++controller.indx_scen>=SCEN_MAX)
+  {
+    controller.indx_scen = 0;
+  }
 }
 void stepFreq(scenario_t *_scen)
 {
-
+uint8_t div = controller.freq_div;
     switch(_scen->mode)
     {
       case FREQ_SWING:
       {
-        if(_scen->f0 >= _scen->fmax)
+        if(_scen->dir)
         {
-          _scen->f0 -= _scen->step_freq_Hz;
+          _scen->f0 += _scen->step_freq_Hz;
+          if(_scen->f0 > _scen->fmax)
+          {
+            _scen->f0 -= _scen->step_freq_Hz;
+            _scen->dir = ~_scen->dir;
+          }
         }
         else
         {
-          _scen->f0 += _scen->step_freq_Hz;
+          if((_scen->f0 >=_scen->fmin))
+          {
+            _scen->f0 -= _scen->step_freq_Hz;
+           
+          }
+           if(_scen->f0 <_scen->fmin)
+            {
+              _scen->dir = ~_scen->dir;
+              _scen->f0 += _scen->step_freq_Hz;
+            }
         }
+
       }
       break;
       case FREQ_INCREASE:
@@ -129,24 +168,38 @@ void stepFreq(scenario_t *_scen)
       break;
       case FREQ_PULSE:
       {
-        if(0 == _scen->dir){
-          _scen->dir = 1;
-          _scen->f0 = 0;
-        }
-        else{
+        
+        if(_scen->dir)
+        {
           _scen->dir = 0;
-          if(_scen->f0 >= _scen->fmax){
-            _scen->f0 = _scen->fmin;
+          cur_freq += _scen->step_freq_Hz;
+          
+          if(cur_freq > _scen->fmax){
+            cur_freq = _scen->fmin;
           }
-          else{
-            _scen->f0 += _scen->step_freq_Hz;
-          }
+          _scen->f0 += cur_freq;
+        }
+        else
+        {
+          _scen->dir = ~_scen->dir;
+          _scen->f0 = 0;
         }
       }
       break;
     }
 }
 
+void SetFreq(uint32_t freq_Hz)
+{
+  uint32_t arr=0;
+  // 10000Hz => arr = 100 тиков по 1 мкс
+  // 50000Hz => arr = 20 тиков по 1 мкс
+  if(freq_Hz !=0)
+  {
+    arr = (1000000/freq_Hz)/2;// т.к. TIM_OCMODE_TOGGLE то период делим на 2
+  }
+    TIM3_Set_Arr( arr);
+}
 uint8_t _stepFreq(void)
 {
   if( direct_dev)
@@ -217,26 +270,35 @@ int main(void)
   MX_TIM3_Init();
   MX_ADC_Init();
   /* USER CODE BEGIN 2 */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+
   sc = &Scenic[controller.indx_scen];
-  stepFreq(sc);
+//  stepFreq(sc);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   controller.time_start = HAL_GetTick();
-  controller.time_stop  = 
-tick = HAL_GetTick() + 1000;
+  controller.time_stop  = controller.time_start + sc->period_sec*1000;
+  stop_step_ms =  HAL_GetTick() + sc->step_ms ;
   while (1)
   {
-    if(HAL_GetTick()> tick)
+    if(HAL_GetTick()> controller.time_stop )
     {
-      tick += 200;
-      uint8_t arr = _stepFreq();
-      TIM3_Set_Arr( arr);
+      changeScenario();
+      sc = &Scenic[controller.indx_scen];
+      stepFreq(sc);
+      SetFreq(sc->f0);
+      controller.time_start = HAL_GetTick();
+      controller.time_stop  = controller.time_start + sc->period_sec*1000;
       
     }
-    
+    if(HAL_GetTick()> stop_step_ms )
+    {
+      stepFreq(sc);
+      SetFreq(sc->f0);
+      stop_step_ms =  HAL_GetTick() + sc->step_ms ;
+    }
+     
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

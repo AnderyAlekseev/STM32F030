@@ -46,7 +46,7 @@ typedef enum
 typedef struct
 {
   uint32_t period_sec;          // длительность сценария
-  uint8_t  dir;                 // увеличивать или уменьшать частоту
+  uint8_t  dir;                 // 1 -увеличивать  0- уменьшать частоту
   uint32_t f0;                  // текущая частота
   uint32_t fmin;                
   uint32_t fmax;
@@ -57,11 +57,10 @@ typedef struct
 
 typedef struct 
 {
-  uint8_t       stage;
   uint8_t       indx_scen;     
   uint32_t      time_start;
   uint32_t      time_stop;
-  
+  uint8_t       freq_div;
 }scenic_ctrl_t;
 /* USER CODE END ET */
 
