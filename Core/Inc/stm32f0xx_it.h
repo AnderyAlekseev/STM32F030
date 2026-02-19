@@ -52,7 +52,7 @@ void SVC_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
 /* USER CODE BEGIN EFP */
-
+uint32_t GetSysTick();
 /* USER CODE END EFP */
 
 #ifdef __cplusplus

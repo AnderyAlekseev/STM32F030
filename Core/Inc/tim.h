@@ -32,18 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
-extern TIM_HandleTypeDef htim3;
-
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-void MX_TIM3_Init(void);
-
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+void MX_TIM1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-void TIM3_Set_Arr( uint32_t Period);
+void TIM_Set_Arr( uint32_t Period);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
